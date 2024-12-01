@@ -7,8 +7,6 @@
 - [개요](#개요)
 - [운영개념](#운영개념)
 - [요구사항](#요구사항)
-- [이용방법](#이용방법)
-- [요구사항](#요구사항)
 - [E-R Diagram](#E-R-Diagram)
 - [Relation Schema](#Relation-Schema)
 
