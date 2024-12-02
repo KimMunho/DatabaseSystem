@@ -23,7 +23,7 @@
 
 ## 요구사항
 
-1. 프로젝트의 엔티티로 'User', 'Club'가 있다.
+1. 프로젝트의 엔티티로 'User', 'Club', ‘Club_members’가 있다.
 2. 'User'은 Primary key인 Ssn을 가지고 Name, Address, ID, Role, Pnum, Gender이라는 속성을 가진다.
 
 - 사용자는 Name, Address, ID, Pnum, Gender를 통해 회원가입 할 수 있다.
@@ -44,6 +44,10 @@
 - Role이 해당 ‘Club’의 President인 ‘User’인 경우에만 ‘Manage_club’에 진입하여 ‘Club’의 attribute를 수정, 삭제할 수 있다.
   - ‘Club’이 삭제된 경우 해당 ‘Club’의 President와 모든 Member인 ‘User’의 Role은 General로 변경된다.
 - 진입이 불가하다면 이전 페이지로 돌아가고 그러한 이유를 터미널을 통해 출력한다.
+
+5. 'Club_members'은 Primary key인 C_Name, UserID를 가지고 UserName, Role 라는 속성을 가진다.
+
+- ‘Club_members’를 통해 Role이 President이거나 Member인 ‘User’를 저장한다.
 
 ## E-R Diagram
 
