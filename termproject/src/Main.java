@@ -158,51 +158,94 @@ public class Main {
             pstmt.setString(2, location);
             pstmt.setString(3, type);
             pstmt.setInt(4, ssn);
-            pstmt.setInt(5, ssn);
+            pstmt.setInt(5, ssn); // Club_Uid는 President의 Ssn 사용
             pstmt.executeUpdate();
 
-            // 사용자의 Role을 President로 변경
+            // 사용자의 Role을 President로 업데이트
             query = "UPDATE user SET Role = 'President' WHERE Ssn = ?";
             try (PreparedStatement updateStmt = conn.prepareStatement(query)) {
                 updateStmt.setInt(1, ssn);
                 updateStmt.executeUpdate();
             }
-            System.out.println("클럽 생성 완료. 당신은 이제 클럽의 President입니다.");
+
+            // club_members 테이블에 생성된 클럽 추가 (President 추가)
+            query = "INSERT INTO club_members (C_Name, UserID, UserName, Role) VALUES (?, ?, ?, 'President')";
+            try (PreparedStatement insertStmt = conn.prepareStatement(query)) {
+                insertStmt.setString(1, clubName);
+                insertStmt.setString(2, getUserId(conn, ssn)); // President의 UserID
+                insertStmt.setString(3, getUserName(conn, ssn)); // President의 Name
+                insertStmt.executeUpdate();
+            }
+
+            System.out.println("클럽 생성 완료. 클럽 이름: " + clubName);
         } catch (SQLException e) {
             System.out.println("클럽 생성 실패: " + e.getMessage());
         }
     }
 
-    // 클럽 가입
+
     private static void joinClub(Connection conn, Scanner scanner, int ssn) throws SQLException {
-        System.out.print("가입할 클럽 이름: ");
+        System.out.println("현재 가입 가능한 클럽 이름 목록:");
+
+        // 클럽 이름만 출력
+        String query = "SELECT Club_Name FROM club";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                System.out.println("- " + rs.getString("Club_Name"));
+            }
+        }
+
+        System.out.print("가입할 클럽 이름을 입력하세요: ");
         String clubName = scanner.nextLine();
 
-        String query = "SELECT Club_Name FROM club WHERE Club_Name = ?";
+        query = "SELECT Club_Name FROM club WHERE Club_Name = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, clubName);
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
+                // 삽입 전 UserID 확인
+                String userId = getUserId(conn, ssn);
+                if (userId == null) {
+                    System.out.println("가입 실패: UserID를 찾을 수 없습니다.");
+                    return;
+                }
+
+                System.out.println("삽입하려는 UserID: " + userId);
+
+                // club_members 테이블에 사용자 추가
                 query = "INSERT INTO club_members (C_Name, UserID, UserName, Role) VALUES (?, ?, ?, 'Member')";
                 try (PreparedStatement insertStmt = conn.prepareStatement(query)) {
                     insertStmt.setString(1, clubName);
-                    insertStmt.setInt(2, ssn);
+                    insertStmt.setString(2, userId); // UserID 삽입
                     insertStmt.setString(3, getUserName(conn, ssn));
                     insertStmt.executeUpdate();
                 }
 
+                // 사용자 Role을 Member로 업데이트
                 query = "UPDATE user SET Role = 'Member' WHERE Ssn = ?";
                 try (PreparedStatement updateStmt = conn.prepareStatement(query)) {
                     updateStmt.setInt(1, ssn);
                     updateStmt.executeUpdate();
                 }
-                System.out.println("클럽 가입 성공. 당신은 이제 Member입니다.");
+
+                // 해당 클럽의 number_of_members를 1 증가
+                query = "UPDATE club SET Number_of_members = Number_of_members + 1 WHERE Club_Name = ?";
+                try (PreparedStatement updateStmt = conn.prepareStatement(query)) {
+                    updateStmt.setString(1, clubName);
+                    updateStmt.executeUpdate();
+                }
+
+                System.out.println("클럽 가입 성공. 가입한 클럽: " + clubName);
             } else {
                 System.out.println("클럽 가입 실패: 클럽이 존재하지 않습니다.");
             }
         }
     }
+
+
+
 
     // 클럽 관리
     private static void manageClub(Connection conn, Scanner scanner, int ssn) throws SQLException {
@@ -268,6 +311,7 @@ public class Main {
                 System.out.println("클럽 이름: " + rs.getString("Club_Name"));
                 System.out.println("위치: " + rs.getString("Location"));
                 System.out.println("유형: " + rs.getString("Type"));
+                System.out.println("웹페이지: " + rs.getString("Webpage")); // 웹페이지 출력 추가
                 System.out.println("회원 수: " + rs.getInt("Number_of_members"));
                 System.out.println("클럽 방문 완료.");
             } else {
@@ -308,6 +352,19 @@ public class Main {
         return null;
     }
 
+    private static String getUserId(Connection conn, int ssn) throws SQLException {
+        String query = "SELECT ID FROM user WHERE Ssn = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, ssn);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("ID");
+            }
+        }
+        return null;
+    }
+
+
     // User 엔티티 조회
     private static void viewUserEntity(Connection conn) throws SQLException {
         String query = "SELECT * FROM user";
@@ -328,7 +385,7 @@ public class Main {
         }
     }
 
-    // Club 엔티티 조회
+    // 클럽 엔티티 조회
     private static void viewClubEntity(Connection conn) throws SQLException {
         String query = "SELECT * FROM club";
         try (Statement stmt = conn.createStatement();
@@ -340,8 +397,7 @@ public class Main {
                 System.out.println("Location: " + rs.getString("Location"));
                 System.out.println("Type: " + rs.getString("Type"));
                 System.out.println("Number_of_members: " + rs.getInt("Number_of_members"));
-                System.out.println("PresidentID: " + rs.getString("PresidentID"));
-                System.out.println("Club_Uid: " + rs.getString("Club_Uid"));
+                System.out.println("Webpage: " + rs.getString("Webpage"));
                 System.out.println("--------------------------------------------------");
             }
         }
@@ -363,4 +419,5 @@ public class Main {
             }
         }
     }
+
 }
