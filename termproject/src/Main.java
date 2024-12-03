@@ -15,6 +15,9 @@ public class Main {
                 System.out.println("1. 회원가입");
                 System.out.println("2. 로그인");
                 System.out.println("3. 종료");
+                System.out.println("4. User 엔티티 조회");
+                System.out.println("5. Club 엔티티 조회");
+                System.out.println("6. Club_Members 엔티티 조회");
                 System.out.print("선택: ");
                 int choice = scanner.nextInt();
                 scanner.nextLine(); // 버퍼 클리어
@@ -26,6 +29,12 @@ public class Main {
                 } else if (choice == 3) {
                     System.out.println("프로그램을 종료합니다.");
                     break;
+                } else if (choice == 4) {
+                    viewUserEntity(conn);
+                } else if (choice == 5) {
+                    viewClubEntity(conn);
+                } else if (choice == 6) {
+                    viewClubMembersEntity(conn);
                 } else {
                     System.out.println("잘못된 입력입니다.");
                 }
@@ -93,7 +102,8 @@ public class Main {
             System.out.println("2. 클럽 가입");
             System.out.println("3. 클럽 관리");
             System.out.println("4. 클럽 방문");
-            System.out.println("5. 종료");
+            System.out.println("5. 클럽 참여");
+            System.out.println("6. 종료");
             System.out.print("선택: ");
             int choice = scanner.nextInt();
             scanner.nextLine(); // 버퍼 클리어
@@ -119,6 +129,12 @@ public class Main {
             } else if (choice == 4) {
                 visitClub(conn, scanner);
             } else if (choice == 5) {
+                if ("Member".equals(role)) {
+                    participateClub(conn, ssn);
+                } else {
+                    System.out.println("권한 부족: 클럽 참여는 Member 역할만 가능합니다.");
+                }
+            } else if (choice == 6) {
                 System.out.println("초기화면으로 돌아갑니다.");
                 break;
             } else {
@@ -141,7 +157,7 @@ public class Main {
             pstmt.setString(1, clubName);
             pstmt.setString(2, location);
             pstmt.setString(3, type);
-            pstmt.setInt(4, ssn); // 현재 사용자 ID
+            pstmt.setInt(4, ssn);
             pstmt.setInt(5, ssn);
             pstmt.executeUpdate();
 
@@ -168,6 +184,14 @@ public class Main {
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
+                query = "INSERT INTO club_members (C_Name, UserID, UserName, Role) VALUES (?, ?, ?, 'Member')";
+                try (PreparedStatement insertStmt = conn.prepareStatement(query)) {
+                    insertStmt.setString(1, clubName);
+                    insertStmt.setInt(2, ssn);
+                    insertStmt.setString(3, getUserName(conn, ssn));
+                    insertStmt.executeUpdate();
+                }
+
                 query = "UPDATE user SET Role = 'Member' WHERE Ssn = ?";
                 try (PreparedStatement updateStmt = conn.prepareStatement(query)) {
                     updateStmt.setInt(1, ssn);
@@ -214,6 +238,7 @@ public class Main {
                         deleteStmt.setString(1, clubName);
                         deleteStmt.executeUpdate();
                     }
+
                     query = "UPDATE user SET Role = 'General' WHERE Ssn = ?";
                     try (PreparedStatement updateStmt = conn.prepareStatement(query)) {
                         updateStmt.setInt(1, ssn);
@@ -247,6 +272,94 @@ public class Main {
                 System.out.println("클럽 방문 완료.");
             } else {
                 System.out.println("클럽 방문 실패: 클럽이 존재하지 않습니다.");
+            }
+        }
+    }
+
+    // 클럽 참여
+    private static void participateClub(Connection conn, int ssn) throws SQLException {
+        String query = "SELECT c.* FROM club c JOIN club_members cm ON c.Club_Name = cm.C_Name WHERE cm.UserID = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, ssn);
+            ResultSet rs = pstmt.executeQuery();
+
+            System.out.println("클럽 참여 정보:");
+            System.out.println("--------------------------------------------------");
+            while (rs.next()) {
+                System.out.println("클럽 이름: " + rs.getString("Club_Name"));
+                System.out.println("위치: " + rs.getString("Location"));
+                System.out.println("유형: " + rs.getString("Type"));
+                System.out.println("회원 수: " + rs.getInt("Number_of_members"));
+                System.out.println("--------------------------------------------------");
+            }
+        }
+    }
+
+    // 사용자 이름 가져오기 (유틸 메서드)
+    private static String getUserName(Connection conn, int ssn) throws SQLException {
+        String query = "SELECT Name FROM user WHERE Ssn = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, ssn);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("Name");
+            }
+        }
+        return null;
+    }
+
+    // User 엔티티 조회
+    private static void viewUserEntity(Connection conn) throws SQLException {
+        String query = "SELECT * FROM user";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            System.out.println("User 엔티티 조회:");
+            System.out.println("--------------------------------------------------");
+            while (rs.next()) {
+                System.out.println("Ssn: " + rs.getInt("Ssn"));
+                System.out.println("Name: " + rs.getString("Name"));
+                System.out.println("ID: " + rs.getString("ID"));
+                System.out.println("Gender: " + rs.getString("Gender"));
+                System.out.println("Address: " + rs.getString("Address"));
+                System.out.println("Pnum: " + rs.getString("Pnum"));
+                System.out.println("Role: " + rs.getString("Role"));
+                System.out.println("--------------------------------------------------");
+            }
+        }
+    }
+
+    // Club 엔티티 조회
+    private static void viewClubEntity(Connection conn) throws SQLException {
+        String query = "SELECT * FROM club";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            System.out.println("Club 엔티티 조회:");
+            System.out.println("--------------------------------------------------");
+            while (rs.next()) {
+                System.out.println("Club_Name: " + rs.getString("Club_Name"));
+                System.out.println("Location: " + rs.getString("Location"));
+                System.out.println("Type: " + rs.getString("Type"));
+                System.out.println("Number_of_members: " + rs.getInt("Number_of_members"));
+                System.out.println("PresidentID: " + rs.getString("PresidentID"));
+                System.out.println("Club_Uid: " + rs.getString("Club_Uid"));
+                System.out.println("--------------------------------------------------");
+            }
+        }
+    }
+
+    // Club_Members 엔티티 조회
+    private static void viewClubMembersEntity(Connection conn) throws SQLException {
+        String query = "SELECT * FROM club_members";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            System.out.println("Club_Members 엔티티 조회:");
+            System.out.println("--------------------------------------------------");
+            while (rs.next()) {
+                System.out.println("C_Name: " + rs.getString("C_Name"));
+                System.out.println("UserID: " + rs.getString("UserID"));
+                System.out.println("UserName: " + rs.getString("UserName"));
+                System.out.println("Role: " + rs.getString("Role"));
+                System.out.println("--------------------------------------------------");
             }
         }
     }
