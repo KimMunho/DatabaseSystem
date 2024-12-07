@@ -1,6 +1,9 @@
 import java.sql.*;
 import java.util.Scanner;
 
+
+// President, Member, General 전체 경우의 수 확인 완료
+
 public class Main {
 
     // MySQL 연결 정보
